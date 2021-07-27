@@ -1,8 +1,23 @@
-import Head from 'next';
+import Head from 'next/head';
+import { GetStaticProps } from 'next';
+import Prismic from '@prismicio/client';
+import { RichText } from 'prismic-dom';
 
 import styles from './styles.module.scss';
+import { getPrismicClient } from '../../services/prismic';
 
-export default function Posts() {
+type Post = {
+    slug: string;
+    title: string;
+    excerpt: string;
+    updatedAt: string;
+}
+
+interface PostsProps {
+    posts: Post[];
+}
+
+export default function Posts({ posts }: PostsProps) {
     return (
         <>
             <Head>
@@ -11,23 +26,49 @@ export default function Posts() {
 
             <main className={styles.container}>
                 <div className={styles.posts}>
-                    <a href="#">
-                        <time>18/07/2021</time>
-                        <strong>Construindo App com Mapa usando React Native Maps e MapBox</strong>
-                        <p>Trabalhar com mapas em aplicações móveis é bem divertido e existem vários casos de uso interessantes para aplicar.</p>
+                    { posts.map(post => (
+                        <a href="#" key={post.slug}>
+                        <time>{post.updatedAt}</time>
+                        <strong>{post.title}</strong>
+                        <p>{post.excerpt}</p>
                     </a>
-                    <a href="#">
-                        <time>18/07/2021</time>
-                        <strong>Construindo App com Mapa usando React Native Maps e MapBox</strong>
-                        <p>Trabalhar com mapas em aplicações móveis é bem divertido e existem vários casos de uso interessantes para aplicar.</p>
-                    </a>
-                    <a href="#">
-                        <time>18/07/2021</time>
-                        <strong>Construindo App com Mapa usando React Native Maps e MapBox</strong>
-                        <p>Trabalhar com mapas em aplicações móveis é bem divertido e existem vários casos de uso interessantes para aplicar.</p>
-                    </a>
+                    ))}
+                    
                 </div>
             </main>
         </>
     )
+}
+
+export const getStaticProps: GetStaticProps = async () => {
+    const prismic = getPrismicClient();
+
+    const response = await prismic.query([
+        Prismic.Predicates.at('document.type', 'posts'),
+    ],
+        {
+            fetch: ['posts.title', 'posts.content'],
+            pageSize: 10,
+            // orderings: '[my.posts.last_publication_date desc]',
+        }
+    )
+
+    // console.log(JSON.stringify(response, null, 2))
+
+    const posts = response.results.map(post => {
+        return {
+            slug: post.uid,
+            title: RichText.asText(post.data.title),
+            excerpt: post.data.content.find(content => content.type === 'paragraph')?.text ?? '',
+            updatedAt: new Date(post.last_publication_date).toLocaleString('pt-Br', {
+                day: '2-digit',
+                month: 'long',
+                year: 'numeric',
+            })
+        }
+    })
+
+    return {
+        props: { posts }
+    }
 }
