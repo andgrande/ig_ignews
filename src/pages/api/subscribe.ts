@@ -20,7 +20,7 @@ export default async function Subscribe(request: NextApiRequest, response: NextA
         const user = await fauna.query<User>(
             q.Get(
                 q.Match(
-                    q.Index('user_email'),
+                    q.Index('user_by_email'),
                     q.Casefold(session.user.email)
                 )
             )
